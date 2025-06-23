@@ -54,9 +54,9 @@ const Block: React.FC<BlockProps> = ({ title, description }) => {
     // Sort liquids by density (heaviest at bottom)
     const sortedLiquids = [...liquids].sort((a, b) => b.density - a.density);
     
-    const volumePerLiquid = (CONTAINER_WIDTH * CONTAINER_DEPTH * CONTAINER_HEIGHT * 0.8) / liquids.length;
+    const volumePerLiquid = (CONTAINER_WIDTH * CONTAINER_DEPTH * CONTAINER_HEIGHT * 0.7) / liquids.length;
     const layers: FluidState[] = [];
-    let currentYPosition = -CONTAINER_HEIGHT / 2;
+    let currentYPosition = -CONTAINER_HEIGHT / 2 + 0.1; // Start just above bottom
 
     sortedLiquids.forEach((liquid) => {
       const height = volumePerLiquid / (CONTAINER_WIDTH * CONTAINER_DEPTH);
@@ -101,11 +101,13 @@ const Block: React.FC<BlockProps> = ({ title, description }) => {
 
   const Scene = () => (
     <>
-      <ambientLight intensity={0.6} />
-      <directionalLight position={[10, 10, 5]} intensity={1} />
-      <pointLight position={[-10, -10, -5]} intensity={0.5} />
+      {/* Enhanced Lighting */}
+      <ambientLight intensity={0.4} />
+      <directionalLight position={[10, 10, 5]} intensity={0.8} castShadow />
+      <directionalLight position={[-10, 5, 5]} intensity={0.4} />
+      <pointLight position={[0, 8, 8]} intensity={0.6} />
       
-      {/* Container */}
+      {/* Container - Always visible */}
       <Container position={[0, 0, 0]} />
       
       {/* Fluid Layers */}
@@ -122,15 +124,17 @@ const Block: React.FC<BlockProps> = ({ title, description }) => {
         />
       ))}
       
-      {/* Density Labels */}
+      {/* Density Labels - Only show when liquids are present */}
       {fluidLayers.map((layer, index) => (
         <Text
           key={`label-${layer.liquid.name}-${index}`}
-          position={[CONTAINER_WIDTH/2 + 1, layer.yPosition, 0]}
-          fontSize={0.3}
-          color={layer.liquid.color}
+          position={[CONTAINER_WIDTH/2 + 1.5, layer.yPosition, 0]}
+          fontSize={0.4}
+          color="#333"
           anchorX="left"
           anchorY="middle"
+          outlineWidth={0.02}
+          outlineColor="#fff"
         >
           {layer.liquid.name}
           {'\n'}{layer.liquid.density} kg/m³
@@ -144,17 +148,35 @@ const Block: React.FC<BlockProps> = ({ title, description }) => {
         color="#333"
         anchorX="center"
         anchorY="middle"
-        font="/fonts/Inter-Bold.woff"
+        outlineWidth={0.02}
+        outlineColor="#fff"
       >
         3D Fluid Density Simulation
       </Text>
+      
+      {/* Empty Container Instruction */}
+      {fluidLayers.length === 0 && (
+        <Text
+          position={[0, 0, 0]}
+          fontSize={0.5}
+          color="#666"
+          anchorX="center"
+          anchorY="middle"
+          outlineWidth={0.02}
+          outlineColor="#fff"
+        >
+          Add liquids to see density layering!
+          {'\n'}⬅ Click "Add" buttons on the left
+        </Text>
+      )}
       
       <OrbitControls
         enablePan={true}
         enableZoom={true}
         enableRotate={true}
-        minDistance={5}
-        maxDistance={20}
+        minDistance={8}
+        maxDistance={25}
+        target={[0, 0, 0]}
       />
     </>
   );
@@ -214,22 +236,22 @@ const Block: React.FC<BlockProps> = ({ title, description }) => {
                     onClick={() => addLiquid(liquid)}
                     disabled={selectedLiquids.includes(liquid) || selectedLiquids.length >= 7}
                     style={{
-                      padding: '4px 8px',
+                      padding: '6px 12px',
                       fontSize: '12px',
                       border: 'none',
                       borderRadius: '4px',
-                      background: '#4CAF50',
+                      background: selectedLiquids.includes(liquid) || selectedLiquids.length >= 7 ? '#ccc' : '#4CAF50',
                       color: 'white',
-                      cursor: 'pointer',
-                      opacity: selectedLiquids.includes(liquid) || selectedLiquids.length >= 7 ? 0.5 : 1
+                      cursor: selectedLiquids.includes(liquid) || selectedLiquids.length >= 7 ? 'not-allowed' : 'pointer',
+                      fontWeight: 'bold'
                     }}
                   >
-                    Add
+                    {selectedLiquids.includes(liquid) ? 'Added' : 'Add'}
                   </button>
                   <button
                     onClick={() => setSelectedLiquidForInfo(liquid)}
                     style={{
-                      padding: '4px 8px',
+                      padding: '6px 12px',
                       fontSize: '12px',
                       border: '1px solid #ddd',
                       borderRadius: '4px',
@@ -276,7 +298,7 @@ const Block: React.FC<BlockProps> = ({ title, description }) => {
                   <button
                     onClick={() => removeLiquid(liquid)}
                     style={{
-                      padding: '2px 6px',
+                      padding: '4px 8px',
                       fontSize: '12px',
                       border: 'none',
                       borderRadius: '4px',
@@ -312,14 +334,15 @@ const Block: React.FC<BlockProps> = ({ title, description }) => {
             </label>
             <button
               onClick={clearContainer}
+              disabled={selectedLiquids.length === 0}
               style={{
                 padding: '10px',
                 border: 'none',
                 borderRadius: '8px',
-                background: '#f44336',
+                background: selectedLiquids.length === 0 ? '#ccc' : '#f44336',
                 color: 'white',
                 fontSize: '14px',
-                cursor: 'pointer',
+                cursor: selectedLiquids.length === 0 ? 'not-allowed' : 'pointer',
                 fontWeight: 'bold'
               }}
             >
@@ -333,14 +356,15 @@ const Block: React.FC<BlockProps> = ({ title, description }) => {
           • Click "Add" to pour liquids into the container<br/>
           • Liquids will automatically layer by density<br/>
           • Use mouse to rotate, zoom, and pan the 3D view<br/>
-          • Compare densities and observe the layering effect
+          • Compare densities and observe the layering effect<br/>
+          • Heavier liquids sink to the bottom
         </div>
       </div>
 
       {/* 3D Scene */}
       <div style={{ flex: 1 }}>
         <Canvas
-          camera={{ position: [10, 5, 10], fov: 50 }}
+          camera={{ position: [12, 6, 12], fov: 50 }}
           style={{ background: 'linear-gradient(to bottom, #87CEEB, #E0F6FF)' }}
         >
           <Scene />
